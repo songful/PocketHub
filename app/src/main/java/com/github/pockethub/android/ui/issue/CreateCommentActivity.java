@@ -19,6 +19,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.ActionBar;
 
+import com.github.pockethub.android.rx.AutoDisposeUtils;
 import com.meisolsson.githubsdk.core.ServiceGenerator;
 import com.meisolsson.githubsdk.model.Issue;
 import com.meisolsson.githubsdk.model.Repository;
@@ -70,6 +71,7 @@ public class CreateCommentActivity extends
         repositoryId = getParcelableExtra(Intents.EXTRA_REPOSITORY);
 
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.pager_with_tabs);
 
         ActionBar actionBar = getSupportActionBar();
         actionBar.setTitle(getString(R.string.issue_title) + issueNumber);
@@ -87,7 +89,7 @@ public class CreateCommentActivity extends
                 .createIssueComment(repositoryId.owner().login(), repositoryId.name(), issueNumber, commentRequest)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .compose(this.bindToLifecycle())
+                .as(AutoDisposeUtils.bindToLifecycle(this))
                 .subscribe(response -> finish(response.body()));
     }
 

@@ -33,6 +33,8 @@ import com.github.pockethub.android.ui.MainActivity;
 import com.github.pockethub.android.ui.TabPagerActivity;
 import com.github.pockethub.android.util.ToastUtils;
 
+import butterknife.BindView;
+
 import static android.app.SearchManager.QUERY;
 import static android.content.Intent.ACTION_SEARCH;
 import static android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP;
@@ -45,7 +47,8 @@ import static com.github.pockethub.android.ui.view.OcticonTextView.ICON_PUBLIC;
  */
 public class SearchActivity extends TabPagerActivity<SearchPagerAdapter> {
 
-    private ProgressBar loadingBar;
+    @BindView(R.id.pb_loading)
+    protected ProgressBar loadingBar;
 
     private SearchRepositoryListFragment repoFragment;
 
@@ -58,8 +61,7 @@ public class SearchActivity extends TabPagerActivity<SearchPagerAdapter> {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        loadingBar = (ProgressBar) findViewById(R.id.pb_loading);
+        setContentView(R.layout.tabbed_progress_pager);
 
         ActionBar actionBar = getSupportActionBar();
         actionBar.setDisplayHomeAsUpEnabled(true);
@@ -106,11 +108,6 @@ public class SearchActivity extends TabPagerActivity<SearchPagerAdapter> {
     }
 
     @Override
-    protected int getContentView() {
-        return R.layout.tabbed_progress_pager;
-    }
-
-    @Override
     protected String getIcon(int position) {
         switch (position) {
             case 0:
@@ -145,8 +142,8 @@ public class SearchActivity extends TabPagerActivity<SearchPagerAdapter> {
             repoFragment.setListShown(false);
             userFragment.setListShown(false);
 
-            repoFragment.refresh();
-            userFragment.refresh();
+            repoFragment.forceRefresh();
+            userFragment.forceRefresh();
         }
     }
 
@@ -160,9 +157,9 @@ public class SearchActivity extends TabPagerActivity<SearchPagerAdapter> {
         if (repoFragment == null || userFragment == null) {
             FragmentManager fm = getSupportFragmentManager();
             repoFragment = (SearchRepositoryListFragment) fm.findFragmentByTag(
-                "android:switcher:" + pager.getId() + ":" + 0);
+                    "android:switcher:" + pager.getId() + ":" + 0);
             userFragment = (SearchUserListFragment) fm.findFragmentByTag(
-                "android:switcher:" + pager.getId() + ":" + 1);
+                    "android:switcher:" + pager.getId() + ":" + 1);
         }
     }
 }

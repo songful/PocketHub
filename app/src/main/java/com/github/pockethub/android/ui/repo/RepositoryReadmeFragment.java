@@ -1,6 +1,7 @@
 package com.github.pockethub.android.ui.repo;
 
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -8,17 +9,18 @@ import android.view.ViewGroup;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 
+import com.github.pockethub.android.rx.AutoDisposeUtils;
+import com.github.pockethub.android.ui.base.BaseFragment;
 import com.meisolsson.githubsdk.core.ServiceGenerator;
 import com.meisolsson.githubsdk.model.Repository;
 import com.github.pockethub.android.Intents;
-import com.github.pockethub.android.ui.DialogFragment;
 import com.github.pockethub.android.ui.WebView;
 import com.meisolsson.githubsdk.service.repositories.RepositoryContentService;
 
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.schedulers.Schedulers;
 
-public class RepositoryReadmeFragment extends DialogFragment {
+public class RepositoryReadmeFragment extends BaseFragment {
 
     private static final String PAGE_START = "<!DOCTYPE html><html lang=\"en\"> <head> <title></title>" +
             "<meta charset=\"UTF-8\"> " +
@@ -36,7 +38,7 @@ public class RepositoryReadmeFragment extends DialogFragment {
     }
 
     @Override
-    public void onViewCreated(View view, Bundle savedInstanceState) {
+    public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         webview = (WebView) view;
 
@@ -49,7 +51,7 @@ public class RepositoryReadmeFragment extends DialogFragment {
                 .getReadmeHtml(repo.owner().login(), repo.name(), null)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .compose(this.bindToLifecycle())
+                .as(AutoDisposeUtils.bindToLifecycle(this))
                 .subscribe(response -> {
                     String baseUrl = String.format("https://github.com/%s/%s/raw/%s/",
                             repo.owner().login(), repo.name(), "master");

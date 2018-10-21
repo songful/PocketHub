@@ -20,6 +20,7 @@ import android.os.Bundle;
 import android.support.v7.app.ActionBar;
 import android.util.Log;
 
+import com.github.pockethub.android.rx.AutoDisposeUtils;
 import com.github.pockethub.android.rx.RxProgress;
 import com.meisolsson.githubsdk.core.ServiceGenerator;
 import com.meisolsson.githubsdk.model.Gist;
@@ -71,6 +72,7 @@ public class EditCommentActivity extends
         gist = getParcelableExtra(EXTRA_GIST);
         comment = getIntent().getParcelableExtra(EXTRA_COMMENT);
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.pager_with_tabs);
 
         ActionBar actionBar = getSupportActionBar();
         actionBar.setTitle(getString(R.string.gist_title) + gist.id());
@@ -99,8 +101,8 @@ public class EditCommentActivity extends
                 .editGistComment(gist.id(), comment.id(), commentRequest)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .compose(this.bindToLifecycle())
                 .compose(RxProgress.bindToLifecycle(this, R.string.editing_comment))
+                .as(AutoDisposeUtils.bindToLifecycle(this))
                 .subscribe(response -> finish(response.body()), e -> {
                     Log.d(TAG, "Exception editing comment on gist", e);
                     ToastUtils.show(this, e.getMessage());

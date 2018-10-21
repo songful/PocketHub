@@ -22,6 +22,7 @@ import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import com.github.pockethub.android.rx.AutoDisposeUtils;
 import com.meisolsson.githubsdk.core.ServiceGenerator;
 import com.meisolsson.githubsdk.model.Issue;
 import com.meisolsson.githubsdk.model.Repository;
@@ -38,13 +39,14 @@ import com.github.pockethub.android.ui.user.UriLauncherActivity;
 import com.github.pockethub.android.util.AvatarLoader;
 import com.github.pockethub.android.util.InfoUtils;
 import com.meisolsson.githubsdk.service.repositories.RepositoryService;
-import com.google.inject.Inject;
+import javax.inject.Inject;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicReference;
 
+import butterknife.BindView;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.schedulers.Schedulers;
 
@@ -149,7 +151,8 @@ public class IssuesViewActivity extends PagerActivity {
         return builder.toIntent();
     }
 
-    private ViewPager pager;
+    @BindView(R.id.vp_pages)
+    protected ViewPager pager;
 
     private int[] issueNumbers;
 
@@ -160,12 +163,12 @@ public class IssuesViewActivity extends PagerActivity {
     private Repository repo;
 
     @Inject
-    private AvatarLoader avatars;
+    protected AvatarLoader avatars;
 
     @Inject
-    private IssueStore store;
+    protected IssueStore store;
 
-    private final AtomicReference<User> user = new AtomicReference<>();
+    private User user;
 
     private boolean canWrite;
 
@@ -174,21 +177,18 @@ public class IssuesViewActivity extends PagerActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_pager);
 
         issueNumbers = getIntArrayExtra(EXTRA_ISSUE_NUMBERS);
         pullRequests = getBooleanArrayExtra(EXTRA_PULL_REQUESTS);
         repoIds = getIntent().getParcelableArrayListExtra(EXTRA_REPOSITORIES);
         repo = getParcelableExtra(EXTRA_REPOSITORY);
 
-        setContentView(R.layout.activity_pager);
-
-        setSupportActionBar((Toolbar) findViewById(R.id.toolbar));
-
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        ActionBar actionBar = getSupportActionBar();
+        actionBar.setDisplayHomeAsUpEnabled(true);
         if (repo != null) {
-            ActionBar actionBar = getSupportActionBar();
             actionBar.setSubtitle(InfoUtils.createRepoId(repo));
-            user.set(repo.owner());
+            user = repo.owner();
             avatars.bind(actionBar, user);
         }
 
@@ -200,15 +200,21 @@ public class IssuesViewActivity extends PagerActivity {
                     .getRepository(temp.owner().login(), temp.name())
                     .subscribeOn(Schedulers.io())
                     .observeOn(AndroidSchedulers.mainThread())
-                    .compose(this.bindToLifecycle())
+                    .as(AutoDisposeUtils.bindToLifecycle(this))
                     .subscribe(response -> repositoryLoaded(response.body()));
         } else {
             repositoryLoaded(repo);
         }
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        pager.removeOnPageChangeListener(this);
+    }
+
     private void repositoryLoaded(Repository repo) {
-        if (issueNumbers.length == 1 && (user.get() == null || user.get().avatarUrl() == null)) {
+        if (issueNumbers.length == 1 && (user == null || user.avatarUrl() == null)) {
             avatars.bind(getSupportActionBar(), repo.owner());
         }
 
@@ -220,7 +226,6 @@ public class IssuesViewActivity extends PagerActivity {
 
     private void configurePager() {
         int initialPosition = getIntExtra(EXTRA_POSITION);
-        pager = (ViewPager) findViewById(R.id.vp_pages);
 
         if (repo != null) {
             adapter = new IssuesPagerAdapter(this, repo, issueNumbers, canWrite);
@@ -229,7 +234,7 @@ public class IssuesViewActivity extends PagerActivity {
         }
         pager.setAdapter(adapter);
 
-        pager.setOnPageChangeListener(this);
+        pager.addOnPageChangeListener(this);
         pager.scheduleSetItem(initialPosition, this);
         onPageSelected(initialPosition);
     }
@@ -269,7 +274,7 @@ public class IssuesViewActivity extends PagerActivity {
             if (issue != null) {
                 Repository fullRepo = issue.repository();
                 if (fullRepo != null && fullRepo.owner() != null) {
-                    user.set(fullRepo.owner());
+                    user = fullRepo.owner();
                     avatars.bind(actionBar, user);
                 } else {
                     actionBar.setLogo(null);

@@ -22,7 +22,9 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteQueryBuilder;
 
-import com.github.pockethub.android.core.PageIterator;
+import com.github.pockethub.android.core.GitHubRequest;
+import com.google.auto.factory.AutoFactory;
+import com.google.auto.factory.Provided;
 import com.meisolsson.githubsdk.core.ServiceGenerator;
 import com.meisolsson.githubsdk.model.Page;
 import com.meisolsson.githubsdk.model.Permissions;
@@ -30,9 +32,6 @@ import com.meisolsson.githubsdk.model.Repository;
 import com.meisolsson.githubsdk.model.User;
 import com.meisolsson.githubsdk.service.activity.WatchingService;
 import com.meisolsson.githubsdk.service.repositories.RepositoryService;
-import com.google.inject.Inject;
-import com.google.inject.Provider;
-import com.google.inject.assistedinject.Assisted;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -40,27 +39,15 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
+import javax.inject.Provider;
+
 import retrofit2.Response;
 
 /**
  * Cache of repositories under a given organization
  */
-public class OrganizationRepositories implements
-        PersistableResource<Repository> {
-
-    /**
-     * Creation factory
-     */
-    public interface Factory {
-
-        /**
-         * Get repositories under given organization
-         *
-         * @param org
-         * @return repositories
-         */
-        OrganizationRepositories under(User org);
-    }
+@AutoFactory
+public class OrganizationRepositories implements PersistableResource<Repository> {
 
     private final User org;
 
@@ -75,9 +62,9 @@ public class OrganizationRepositories implements
      * @param context
      * @param accountProvider
      */
-    @Inject
-    public OrganizationRepositories(@Assisted User orgs, Context context,
-            Provider<Account> accountProvider) {
+    public OrganizationRepositories(User orgs,
+                                    @Provided Context context,
+                                    @Provided Provider<Account> accountProvider) {
         this.org = orgs;
         this.context = context;
         this.accountProvider = accountProvider;
@@ -93,7 +80,7 @@ public class OrganizationRepositories implements
                 "repos.watchers", "repos.language", "repos.hasIssues", "repos.mirrorUrl",
                 "repos.permissions_admin", "repos.permissions_pull", "repos.permissions_push" },
                 "repos.orgId=?",
-                new String[] { Integer.toString(org.id()) }, null, null,
+                new String[] { Integer.toString(org.id().intValue()) }, null, null,
                 null);
     }
 
@@ -101,7 +88,7 @@ public class OrganizationRepositories implements
     public Repository loadFrom(Cursor cursor) {
         User owner = User.builder()
                 .login(cursor.getString(3))
-                .id(cursor.getInt(2))
+                .id(cursor.getLong(2))
                 .avatarUrl(cursor.getString(4))
                 .build();
 
@@ -130,7 +117,7 @@ public class OrganizationRepositories implements
     @Override
     public void store(SQLiteDatabase db, List<Repository> repos) {
         db.delete("repos", "orgId=?",
-                new String[] { Integer.toString(org.id()) });
+                new String[] { Integer.toString(org.id().intValue()) });
         if (repos.isEmpty()) {
             return;
         }
@@ -197,7 +184,7 @@ public class OrganizationRepositories implements
         }
     }
 
-    private List<Repository> getAllItems(PageIterator.GitHubRequest<Response<Page<Repository>>> request) {
+    private List<Repository> getAllItems(GitHubRequest<Response<Page<Repository>>> request) {
         List<Repository> repos = new ArrayList<>();
         int current = 1;
         int last = -1;

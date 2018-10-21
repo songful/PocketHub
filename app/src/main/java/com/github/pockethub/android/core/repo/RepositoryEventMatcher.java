@@ -23,7 +23,10 @@ import com.meisolsson.githubsdk.model.GitHubEventType;
 import com.meisolsson.githubsdk.model.Repository;
 import com.meisolsson.githubsdk.model.payload.ForkPayload;
 
-import static com.meisolsson.githubsdk.model.GitHubEventType.*;
+import static com.meisolsson.githubsdk.model.GitHubEventType.CreateEvent;
+import static com.meisolsson.githubsdk.model.GitHubEventType.ForkEvent;
+import static com.meisolsson.githubsdk.model.GitHubEventType.PublicEvent;
+import static com.meisolsson.githubsdk.model.GitHubEventType.WatchEvent;
 
 /**
  * Helper to find a {@link RepositoryEventMatcher} to open for an event
@@ -36,7 +39,7 @@ public class RepositoryEventMatcher {
      * @param event
      * @return gist or null if event doesn't apply
      */
-    public Repository getRepository(final GitHubEvent event) {
+    public static Repository getRepository(final GitHubEvent event) {
         if (event == null || event.payload() == null) {
             return null;
         }

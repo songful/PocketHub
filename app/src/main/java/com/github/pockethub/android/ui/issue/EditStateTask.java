@@ -15,20 +15,21 @@
  */
 package com.github.pockethub.android.ui.issue;
 
+import com.github.pockethub.android.R;
+import com.github.pockethub.android.core.issue.IssueStore;
+import com.github.pockethub.android.rx.AutoDisposeUtils;
 import com.github.pockethub.android.rx.RxProgress;
+import com.github.pockethub.android.ui.BaseActivity;
+import com.github.pockethub.android.ui.ConfirmDialogFragment;
+import com.google.auto.factory.AutoFactory;
+import com.google.auto.factory.Provided;
 import com.meisolsson.githubsdk.model.Issue;
 import com.meisolsson.githubsdk.model.IssueState;
 import com.meisolsson.githubsdk.model.Repository;
-import com.github.pockethub.android.R;
-import com.github.pockethub.android.core.issue.IssueStore;
-import com.github.pockethub.android.ui.ConfirmDialogFragment;
-import com.github.pockethub.android.ui.BaseActivity;
-import com.google.inject.Inject;
 
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.functions.Consumer;
 import io.reactivex.schedulers.Schedulers;
-import roboguice.RoboGuice;
 
 import static com.github.pockethub.android.RequestCodes.ISSUE_CLOSE;
 import static com.github.pockethub.android.RequestCodes.ISSUE_REOPEN;
@@ -36,10 +37,10 @@ import static com.github.pockethub.android.RequestCodes.ISSUE_REOPEN;
 /**
  * Task to close or reopen an issue
  */
+@AutoFactory
 public class EditStateTask {
 
-    @Inject
-    private IssueStore store;
+    private final IssueStore store;
 
     private final BaseActivity activity;
     private final Repository repository;
@@ -54,14 +55,14 @@ public class EditStateTask {
      * @param repository
      * @param issueNumber
      */
-    public EditStateTask(final BaseActivity activity,
+    public EditStateTask(@Provided IssueStore store, final BaseActivity activity,
                          final Repository repository, final int issueNumber,
                          final Consumer<Issue> observer) {
+        this.store = store;
         this.activity = activity;
         this.repository = repository;
         this.issueNumber = issueNumber;
         this.observer = observer;
-        RoboGuice.injectMembers(activity, this);
     }
 
     /**
@@ -90,14 +91,14 @@ public class EditStateTask {
      */
     public EditStateTask edit(boolean close) {
         int message = close ? R.string.closing_issue : R.string.reopening_issue;
-        IssueState state = close ? IssueState.closed : IssueState.open;
+        IssueState state = close ? IssueState.Closed : IssueState.Open;
 
         try {
             store.changeState(repository, issueNumber, state)
                     .subscribeOn(Schedulers.io())
                     .observeOn(AndroidSchedulers.mainThread())
-                    .compose(activity.bindToLifecycle())
                     .compose(RxProgress.bindToLifecycle(activity, message))
+                    .as(AutoDisposeUtils.bindToLifecycle(activity))
                     .subscribe(observer);
         } catch (Exception e) {
             e.printStackTrace();

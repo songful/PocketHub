@@ -26,12 +26,10 @@ import android.view.View;
 import android.widget.ProgressBar;
 
 import com.afollestad.materialdialogs.MaterialDialog;
-import com.meisolsson.githubsdk.core.ServiceGenerator;
-import com.meisolsson.githubsdk.model.Repository;
-import com.meisolsson.githubsdk.model.User;
 import com.github.pockethub.android.Intents.Builder;
 import com.github.pockethub.android.R;
 import com.github.pockethub.android.core.repo.RepositoryUtils;
+import com.github.pockethub.android.rx.AutoDisposeUtils;
 import com.github.pockethub.android.ui.TabPagerActivity;
 import com.github.pockethub.android.ui.user.UriLauncherActivity;
 import com.github.pockethub.android.ui.user.UserViewActivity;
@@ -39,12 +37,17 @@ import com.github.pockethub.android.util.AvatarLoader;
 import com.github.pockethub.android.util.InfoUtils;
 import com.github.pockethub.android.util.ShareUtils;
 import com.github.pockethub.android.util.ToastUtils;
+import com.meisolsson.githubsdk.core.ServiceGenerator;
+import com.meisolsson.githubsdk.model.Repository;
+import com.meisolsson.githubsdk.model.User;
 import com.meisolsson.githubsdk.service.activity.StarringService;
 import com.meisolsson.githubsdk.service.repositories.RepositoryContentService;
 import com.meisolsson.githubsdk.service.repositories.RepositoryForkService;
 import com.meisolsson.githubsdk.service.repositories.RepositoryService;
-import com.google.inject.Inject;
 
+import javax.inject.Inject;
+
+import butterknife.BindView;
 import io.reactivex.Single;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.schedulers.Schedulers;
@@ -78,9 +81,10 @@ public class RepositoryViewActivity extends TabPagerActivity<RepositoryPagerAdap
     private Repository repository;
 
     @Inject
-    private AvatarLoader avatars;
+    protected AvatarLoader avatars;
 
-    private ProgressBar loadingBar;
+    @BindView(R.id.pb_loading)
+    protected ProgressBar loadingBar;
 
     private boolean isStarred;
 
@@ -91,11 +95,9 @@ public class RepositoryViewActivity extends TabPagerActivity<RepositoryPagerAdap
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.tabbed_progress_pager);
 
         repository = getParcelableExtra(EXTRA_REPOSITORY);
-
-        loadingBar = (ProgressBar) findViewById(R.id.pb_loading);
-
         User owner = repository.owner();
 
         ActionBar actionBar = getSupportActionBar();
@@ -113,10 +115,15 @@ public class RepositoryViewActivity extends TabPagerActivity<RepositoryPagerAdap
                     .getRepository(repository.owner().login(), repository.name())
                     .subscribeOn(Schedulers.io())
                     .observeOn(AndroidSchedulers.mainThread())
-                    .compose(this.bindToLifecycle())
+                    .as(AutoDisposeUtils.bindToLifecycle(this))
                     .subscribe(response -> {
-                        repository = response.body();
-                        checkReadme();
+                        if (response.isSuccessful()) {
+                            repository = response.body();
+                            checkReadme();
+                        } else {
+                            ToastUtils.show(this, R.string.error_repo_load);
+                            loadingBar.setVisibility(View.GONE);
+                        }
                     }, e -> {
                         ToastUtils.show(this, R.string.error_repo_load);
                         loadingBar.setVisibility(View.GONE);
@@ -138,7 +145,8 @@ public class RepositoryViewActivity extends TabPagerActivity<RepositoryPagerAdap
         followItem.setTitle(isStarred ? R.string.unstar : R.string.star);
 
         MenuItem parentRepo = menu.findItem(R.id.m_parent_repo);
-        parentRepo.setVisible(repository.isFork());
+        if(repository != null && repository.isFork() != null)
+            parentRepo.setVisible(repository.isFork());
 
         return super.onPrepareOptionsMenu(menu);
     }
@@ -156,7 +164,7 @@ public class RepositoryViewActivity extends TabPagerActivity<RepositoryPagerAdap
                 .hasReadme(repository.owner().login(), repository.name())
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .compose(this.<Response>bindToLifecycle())
+                .as(AutoDisposeUtils.bindToLifecycle(this))
                 .subscribe(response -> {
                     hasReadme = response.code() == 200;
                     configurePager();
@@ -231,11 +239,6 @@ public class RepositoryViewActivity extends TabPagerActivity<RepositoryPagerAdap
     }
 
     @Override
-    protected int getContentView() {
-        return R.layout.tabbed_progress_pager;
-    }
-
-    @Override
     protected String getIcon(int position) {
         switch (position) {
             case 0:
@@ -254,7 +257,7 @@ public class RepositoryViewActivity extends TabPagerActivity<RepositoryPagerAdap
     private void starRepository() {
         StarringService service = ServiceGenerator.createService(this, StarringService.class);
 
-        Single<Response<Boolean>> starSingle;
+        Single<Response<Void>> starSingle;
         if (isStarred) {
             starSingle = service.unstarRepository(repository.owner().login(), repository.name());
         } else {
@@ -263,8 +266,8 @@ public class RepositoryViewActivity extends TabPagerActivity<RepositoryPagerAdap
 
         starSingle.subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .compose(this.bindToLifecycle())
-                .subscribe(aBoolean -> {
+                .as(AutoDisposeUtils.bindToLifecycle(this))
+                .subscribe(aVoid -> {
                     isStarred = !isStarred;
                     setResult(RESOURCE_CHANGED);
                 }, e -> ToastUtils.show(this, isStarred ? R.string.error_unstarring_repository : R.string.error_starring_repository));
@@ -276,7 +279,7 @@ public class RepositoryViewActivity extends TabPagerActivity<RepositoryPagerAdap
                 .checkIfRepositoryIsStarred(repository.owner().login(), repository.name())
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .compose(this.bindToLifecycle())
+                .as(AutoDisposeUtils.bindToLifecycle(this))
                 .subscribe(response -> {
                     isStarred = response.code() == 204;
                     starredStatusChecked = true;
@@ -298,7 +301,7 @@ public class RepositoryViewActivity extends TabPagerActivity<RepositoryPagerAdap
                 .createFork(repository.owner().login(), repository.name())
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .compose(this.bindToLifecycle())
+                .as(AutoDisposeUtils.bindToLifecycle(this))
                 .subscribe(response -> {
                     Repository repo = response.body();
                     UriLauncherActivity.launchUri(this, Uri.parse(repo.htmlUrl()));
@@ -327,7 +330,7 @@ public class RepositoryViewActivity extends TabPagerActivity<RepositoryPagerAdap
                                 .deleteRepository(repository.owner().login(), repository.name())
                                 .subscribeOn(Schedulers.io())
                                 .observeOn(AndroidSchedulers.mainThread())
-                                .compose(RepositoryViewActivity.this.bindToLifecycle())
+                                .as(AutoDisposeUtils.bindToLifecycle(getLifecycle()))
                                 .subscribe(response -> {
                                     onBackPressed();
                                     ToastUtils.show(RepositoryViewActivity.this, R.string.delete_successful);

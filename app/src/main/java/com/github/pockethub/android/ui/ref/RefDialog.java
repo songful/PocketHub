@@ -18,7 +18,7 @@ package com.github.pockethub.android.ui.ref;
 import android.util.Log;
 
 import com.github.pockethub.android.R;
-import com.github.pockethub.android.core.PageIterator;
+import com.github.pockethub.android.core.GitHubRequest;
 import com.github.pockethub.android.core.ref.RefUtils;
 import com.github.pockethub.android.rx.RxProgress;
 import com.github.pockethub.android.ui.BaseActivity;
@@ -66,7 +66,7 @@ public class RefDialog {
         this.activity = activity;
         this.requestCode = requestCode;
 
-        PageIterator.GitHubRequest<Response<Page<GitReference>>> gitHubRequest = page -> ServiceGenerator
+        GitHubRequest<Response<Page<GitReference>>> gitHubRequest = page -> ServiceGenerator
                 .createService(activity, GitService.class)
                 .getGitReferences(repository.owner().login(), repository.name(), page);
 
@@ -101,7 +101,7 @@ public class RefDialog {
                     activity.getString(R.string.select_ref), null, new ArrayList<>(refs), checked);
         }, e -> {
             Log.d(TAG, "Exception loading references", e);
-            ToastUtils.show(activity, e, R.string.error_refs_load);
+            ToastUtils.show(activity, R.string.error_refs_load);
         });
     }
 }

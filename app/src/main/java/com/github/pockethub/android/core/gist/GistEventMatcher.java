@@ -15,7 +15,6 @@
  */
 package com.github.pockethub.android.core.gist;
 
-import com.github.pockethub.android.ui.user.EventType;
 import com.meisolsson.githubsdk.model.Gist;
 import com.meisolsson.githubsdk.model.GitHubEvent;
 import com.meisolsson.githubsdk.model.GitHubEventType;
@@ -33,13 +32,13 @@ public class GistEventMatcher {
      * @param event
      * @return gist or null if event doesn't apply
      */
-    public Gist getGist(final GitHubEvent event) {
+    public static Gist getGist(final GitHubEvent event) {
         if (event == null || event.payload() == null) {
             return null;
         }
 
         GitHubEventType type = event.type();
-        if (EventType.GistEvent.equals(type)) {
+        if (GitHubEventType.GistEvent.equals(type)) {
             return ((GistPayload) event.payload()).gist();
         } else {
             return null;

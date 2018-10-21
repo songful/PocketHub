@@ -20,6 +20,7 @@ import android.os.Bundle;
 import android.support.v7.app.ActionBar;
 import android.text.TextUtils;
 
+import com.github.pockethub.android.rx.AutoDisposeUtils;
 import com.github.pockethub.android.rx.RxProgress;
 import com.meisolsson.githubsdk.core.ServiceGenerator;
 import com.meisolsson.githubsdk.model.Repository;
@@ -97,6 +98,7 @@ public class CreateCommentActivity extends
         path = getStringExtra(EXTRA_PATH);
 
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.pager_with_tabs);
 
         ActionBar actionBar = getSupportActionBar();
         actionBar.setTitle(getString(R.string.commit_prefix)
@@ -119,8 +121,8 @@ public class CreateCommentActivity extends
                 .createCommitComment(repository.owner().login(), repository.name(), commit, commitCommentBuilder.build())
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .compose(this.bindToLifecycle())
                 .compose(RxProgress.bindToLifecycle(this, R.string.creating_comment))
+                .as(AutoDisposeUtils.bindToLifecycle(this))
                 .subscribe(response -> finish(response.body()),
                         e -> ToastUtils.show(this, e.getMessage()));
     }

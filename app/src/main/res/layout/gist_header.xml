@@ -16,7 +16,7 @@
   -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
+    android:layout_height="wrap_content"
     android:background="?selectableItemBackground"
     android:orientation="vertical"
     android:paddingTop="5dp" >
@@ -30,11 +30,10 @@
         android:paddingRight="10dp"
         android:singleLine="true" />
 
-    <TextView
+    <com.github.pockethub.android.ui.view.LinkTextView
         android:id="@+id/tv_gist_description"
         style="@style/ListTitleText"
         android:layout_width="match_parent"
-        android:autoLink="web"
         android:paddingBottom="5dp"
         android:paddingLeft="10dp"
         android:paddingRight="10dp"
